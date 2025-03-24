@@ -3,8 +3,7 @@ from tkinter import ttk, messagebox
 import json
 from faker import Faker
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Boolean
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 import os
 from dotenv import load_dotenv
 import random
@@ -131,7 +130,12 @@ class GeradorBancoDados:
         engine = create_engine(f'sqlite:///bancos_dados/{nome_banco}.db')
         
         # Cria classe de tabela dinâmica
-        atributos_tabela = {}
+        atributos_tabela = {
+            '__tablename__': 'dados',
+            'id': Column(Integer, primary_key=True, autoincrement=True)
+        }
+        
+        # Adiciona as colunas dinamicamente
         for col in self.colunas:
             if col['tipo'] in ['Texto', 'Email', 'Nome', 'Telefone', 'Endereço']:
                 atributos_tabela[col['nome']] = Column(String)
@@ -144,10 +148,7 @@ class GeradorBancoDados:
             elif col['tipo'] == 'Verdadeiro/Falso':
                 atributos_tabela[col['nome']] = Column(Boolean)
                 
-        TabelaDinamica = type('TabelaDinamica', (Base,), {
-            '__tablename__': 'dados',
-            **atributos_tabela
-        })
+        TabelaDinamica = type('TabelaDinamica', (Base,), atributos_tabela)
         
         # Cria a tabela
         Base.metadata.create_all(engine)
