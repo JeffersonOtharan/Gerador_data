@@ -2,4 +2,4 @@ faker==22.6.0
 sqlalchemy==2.0.27
 python-dotenv==1.0.1
 pyinstaller==6.3.0
-faker-rg==0.0.1 
+Pillow==10.2.0 
