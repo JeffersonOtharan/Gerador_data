@@ -1,11 +1,14 @@
 import unittest
 import os
 import json
+import tkinter as tk
 from database_generator import DatabaseGenerator
 
 class TestDatabaseGenerator(unittest.TestCase):
     def setUp(self):
-        self.app = DatabaseGenerator()
+        # Cria uma janela Tkinter para os testes
+        self.root = tk.Tk()
+        self.app = DatabaseGenerator(self.root)
         
     def test_adicionar_coluna(self):
         # Testa adicionar uma coluna
@@ -42,7 +45,8 @@ class TestDatabaseGenerator(unittest.TestCase):
         # Limpa arquivos de teste
         if os.path.exists("configuracao.json"):
             os.remove("configuracao.json")
-        self.app.root.destroy()
+        # Destrói a janela Tkinter
+        self.root.destroy()
 
 if __name__ == "__main__":
     unittest.main() 
