@@ -38,4 +38,23 @@ ENV/
 *.exe
 *.spec
 build/
-dist/ 
+dist/
+
+# Arquivos de ambiente
+.env
+.venv
+venv/
+ENV/
+
+# Arquivos de banco de dados
+bancos_dados/
+*.db
+*.sqlite
+*.sqlite3
+
+# Arquivos de configuração local
+configuracao.json
+
+# Arquivos do sistema
+.DS_Store
+Thumbs.db 

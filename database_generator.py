@@ -17,223 +17,475 @@ fake = Faker('pt_BR')  # Configura para gerar dados em português do Brasil
 # Cria a classe base para SQLAlchemy
 Base = declarative_base()
 
-class GeradorBancoDados:
-    def __init__(self):
-        self.root = tk.Tk()
+class DatabaseGenerator:
+    def __init__(self, root):
+        self.root = root
         self.root.title("Gerador de Banco de Dados")
         self.root.geometry("800x600")
         
-        # Lista para armazenar definições de colunas
-        self.colunas = []
+        # Configuração do estilo
+        self.style = ttk.Style()
+        self.style.configure("TButton", padding=5)
+        self.style.configure("TLabel", padding=5)
+        self.style.configure("TEntry", padding=5)
         
-        # Armazena o último banco de dados gerado
-        self.ultimo_banco = None
-        
-        self.configurar_interface()
-        
-    def configurar_interface(self):
         # Frame principal
-        frame_principal = ttk.Frame(self.root, padding="10")
-        frame_principal.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        self.main_frame = ttk.Frame(root, padding="10")
+        self.main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         
-        # Seção de definição de colunas
-        ttk.Label(frame_principal, text="Definição de Colunas", font=('Helvetica', 12, 'bold')).grid(row=0, column=0, columnspan=3, pady=10)
-        
-        # Nome da coluna
-        ttk.Label(frame_principal, text="Nome da Coluna:").grid(row=1, column=0, padx=5)
-        self.nome_coluna = ttk.Entry(frame_principal, width=30)
-        self.nome_coluna.grid(row=1, column=1, padx=5)
-        
-        # Seleção do tipo de dado
-        ttk.Label(frame_principal, text="Tipo de Dado:").grid(row=1, column=2, padx=5)
-        self.tipos_dados = ['Texto', 'Número Inteiro', 'Número Decimal', 'Data e Hora', 'Verdadeiro/Falso', 
-                          'Email', 'Nome', 'Telefone', 'Endereço']
-        self.tipo_dado = ttk.Combobox(frame_principal, values=self.tipos_dados, state='readonly', width=20)
-        self.tipo_dado.grid(row=1, column=3, padx=5)
-        self.tipo_dado.set(self.tipos_dados[0])
-        
-        # Botão para adicionar coluna
-        ttk.Button(frame_principal, text="Adicionar Coluna", command=self.adicionar_coluna).grid(row=1, column=4, padx=5)
-        
-        # Lista de colunas
-        self.frame_colunas = ttk.Frame(frame_principal)
-        self.frame_colunas.grid(row=2, column=0, columnspan=5, pady=10)
+        # Configuração do grid
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+        self.main_frame.columnconfigure(1, weight=1)
         
         # Número de linhas
-        ttk.Label(frame_principal, text="Quantidade de Linhas:").grid(row=3, column=0, padx=5, pady=10)
-        self.num_linhas = ttk.Entry(frame_principal, width=20)
-        self.num_linhas.grid(row=3, column=1, padx=5, pady=10)
-        self.num_linhas.insert(0, "100")
+        ttk.Label(self.main_frame, text="Número de Linhas:").grid(row=0, column=0, sticky=tk.W, pady=5)
+        self.num_linhas = ttk.Entry(self.main_frame, width=20)
+        self.num_linhas.grid(row=0, column=1, sticky=tk.W, pady=5)
+        self.num_linhas.insert(0, "10")  # Valor padrão
         
-        # Frame para botões
-        frame_botoes = ttk.Frame(frame_principal)
-        frame_botoes.grid(row=4, column=0, columnspan=5, pady=20)
+        # Frame para credenciais
+        cred_frame = ttk.LabelFrame(self.main_frame, text="Credenciais do Banco", padding="5")
+        cred_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
         
-        # Botão para gerar
-        ttk.Button(frame_botoes, text="Gerar Banco de Dados", command=self.gerar_banco_dados).grid(row=0, column=0, padx=5)
+        # Usuário
+        ttk.Label(cred_frame, text="Usuário:").grid(row=0, column=0, sticky=tk.W, padx=5)
+        self.usuario = ttk.Entry(cred_frame, width=20)
+        self.usuario.grid(row=0, column=1, sticky=tk.W, padx=5)
+        self.usuario.insert(0, "admin")  # Valor padrão
         
-        # Botão para download
-        self.botao_download = ttk.Button(frame_botoes, text="Baixar Banco de Dados", command=self.baixar_banco_dados, state='disabled')
-        self.botao_download.grid(row=0, column=1, padx=5)
+        # Senha
+        ttk.Label(cred_frame, text="Senha:").grid(row=1, column=0, sticky=tk.W, padx=5)
+        self.senha = ttk.Entry(cred_frame, width=20, show="*")
+        self.senha.grid(row=1, column=1, sticky=tk.W, padx=5)
+        self.senha.insert(0, "admin123")  # Valor padrão
         
-    def adicionar_coluna(self):
-        nome = self.nome_coluna.get().strip()
-        tipo = self.tipo_dado.get()
+        # Botão para mostrar/ocultar senha
+        self.mostrar_senha = tk.BooleanVar(value=False)
+        self.btn_mostrar_senha = ttk.Checkbutton(cred_frame, text="Mostrar Senha", 
+                                                variable=self.mostrar_senha,
+                                                command=self.toggle_mostrar_senha)
+        self.btn_mostrar_senha.grid(row=1, column=2, sticky=tk.W, padx=5)
         
-        if not nome:
-            messagebox.showerror("Erro", "Por favor, insira um nome para a coluna")
+        # Frame para colunas
+        self.colunas_frame = ttk.LabelFrame(self.main_frame, text="Colunas", padding="5")
+        self.colunas_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        
+        # Lista de colunas
+        self.colunas = []
+        
+        # Botões
+        self.button_frame = ttk.Frame(self.main_frame)
+        self.button_frame.grid(row=3, column=0, columnspan=2, pady=10)
+        
+        ttk.Button(self.button_frame, text="Adicionar Coluna", command=self.adicionar_coluna).pack(side=tk.LEFT, padx=5)
+        ttk.Button(self.button_frame, text="Limpar Colunas", command=self.limpar_colunas).pack(side=tk.LEFT, padx=5)
+        ttk.Button(self.button_frame, text="Salvar Configuração", command=self.salvar_configuracao).pack(side=tk.LEFT, padx=5)
+        ttk.Button(self.button_frame, text="Carregar Configuração", command=self.carregar_configuracao).pack(side=tk.LEFT, padx=5)
+        ttk.Button(self.button_frame, text="Baixar Banco de Dados", command=self.gerar_banco_dados).pack(side=tk.LEFT, padx=5)
+        ttk.Button(self.button_frame, text="Abrir Pasta de Bancos", command=self.abrir_pasta_bancos).pack(side=tk.LEFT, padx=5)
+        
+        # Barra de progresso
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(self.main_frame, variable=self.progress_var, maximum=100)
+        self.progress_bar.grid(row=4, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=5)
+        
+        # Status
+        self.status_var = tk.StringVar()
+        self.status_var.set("Pronto")
+        self.status_label = ttk.Label(self.main_frame, textvariable=self.status_var)
+        self.status_label.grid(row=5, column=0, columnspan=2, sticky=tk.W, pady=5)
+        
+        # Configuração do grid para expansão
+        self.main_frame.rowconfigure(1, weight=1)
+        self.main_frame.columnconfigure(1, weight=1)
+
+    def validar_numero_linhas(self):
+        try:
+            num = int(self.num_linhas.get())
+            if num <= 0:
+                raise ValueError("O número de linhas deve ser positivo")
+            if num > 1000000:
+                raise ValueError("O número de linhas não pode ser maior que 1.000.000")
+            return num
+        except ValueError as e:
+            messagebox.showerror("Erro", str(e))
+            return None
+
+    def limpar_colunas(self):
+        for widget in self.colunas_frame.winfo_children():
+            widget.destroy()
+        self.colunas = []
+        self.status_var.set("Colunas limpas")
+
+    def salvar_configuracao(self):
+        if not self.colunas:
+            messagebox.showwarning("Aviso", "Não há colunas para salvar")
             return
             
-        # Adiciona à lista de colunas
-        self.colunas.append({"nome": nome, "tipo": tipo})
+        config = {
+            'colunas': self.colunas,
+            'num_linhas': self.num_linhas.get()
+        }
         
-        # Atualiza a exibição das colunas
-        self.atualizar_exibicao_colunas()
-        
-        # Limpa o campo de entrada
-        self.nome_coluna.delete(0, tk.END)
-        
-    def atualizar_exibicao_colunas(self):
-        # Limpa a exibição atual
-        for widget in self.frame_colunas.winfo_children():
-            widget.destroy()
+        try:
+            with open('configuracao.json', 'w', encoding='utf-8') as f:
+                json.dump(config, f, ensure_ascii=False, indent=2)
+            messagebox.showinfo("Sucesso", "Configuração salva com sucesso!")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao salvar configuração: {str(e)}")
+
+    def carregar_configuracao(self):
+        try:
+            with open('configuracao.json', 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                
+            self.limpar_colunas()
+            self.num_linhas.delete(0, tk.END)
+            self.num_linhas.insert(0, config.get('num_linhas', '10'))
             
-        # Mostra as colunas
-        for i, col in enumerate(self.colunas):
-            ttk.Label(self.frame_colunas, text=f"{col['nome']} ({col['tipo']})").grid(row=i, column=0, padx=5)
-            ttk.Button(self.frame_colunas, text="Remover", 
-                      command=lambda idx=i: self.remover_coluna(idx)).grid(row=i, column=1, padx=5)
-            
-    def remover_coluna(self, indice):
-        self.colunas.pop(indice)
-        self.atualizar_exibicao_colunas()
+            # Carrega as colunas
+            for col in config.get('colunas', []):
+                # Cria o frame da coluna
+                col_frame = ttk.Frame(self.colunas_frame)
+                col_frame.pack(fill=tk.X, pady=2)
+                
+                # Nome da coluna
+                ttk.Label(col_frame, text="Nome:").pack(side=tk.LEFT, padx=2)
+                nome_entry = ttk.Entry(col_frame, width=20)
+                nome_entry.pack(side=tk.LEFT, padx=2)
+                nome_entry.insert(0, col.get('nome', ''))
+                
+                # Tipo da coluna
+                ttk.Label(col_frame, text="Tipo:").pack(side=tk.LEFT, padx=2)
+                tipo_combo = ttk.Combobox(col_frame, values=[
+                    'Texto', 'Número Inteiro', 'Número Decimal', 'Data e Hora',
+                    'Verdadeiro/Falso', 'Email', 'Nome', 'Telefone', 'Endereço',
+                    'CPF', 'CNPJ', 'RG'
+                ], state='readonly')
+                tipo_combo.pack(side=tk.LEFT, padx=2)
+                tipo_combo.set(col.get('tipo', ''))
+                
+                # Configurações adicionais
+                config_frame = ttk.Frame(col_frame)
+                config_frame.pack(side=tk.LEFT, padx=2)
+                
+                # Botão de configurações
+                config_btn = ttk.Button(config_frame, text="Configurações", 
+                                      command=lambda: self.abrir_configuracoes_coluna(col_frame))
+                config_btn.pack(side=tk.LEFT)
+                
+                # Botão de remover
+                remove_btn = ttk.Button(col_frame, text="Remover", 
+                                      command=lambda: self.remover_coluna(col_frame))
+                remove_btn.pack(side=tk.RIGHT)
+                
+                # Armazena os widgets para referência
+                col_frame.nome_entry = nome_entry
+                col_frame.tipo_combo = tipo_combo
+                col_frame.config_frame = config_frame
+                col_frame.config = col.get('config', {})
+                
+                # Atualiza a lista de colunas quando o nome ou tipo mudar
+                def atualizar_coluna(*args):
+                    for col in self.colunas:
+                        if col['nome'] == nome_entry.get():
+                            col['nome'] = nome_entry.get()
+                            col['tipo'] = tipo_combo.get()
+                            break
+                
+                nome_entry.bind('<KeyRelease>', atualizar_coluna)
+                tipo_combo.bind('<<ComboboxSelected>>', atualizar_coluna)
+                
+                # Adiciona a coluna à lista
+                self.colunas.append({
+                    'nome': col.get('nome', ''),
+                    'tipo': col.get('tipo', ''),
+                    'config': col.get('config', {})
+                })
+                
+                self.colunas_frame.update_idletasks()
+                self.colunas_frame.configure(height=len(self.colunas_frame.winfo_children()) * 40)
+                
+            messagebox.showinfo("Sucesso", "Configuração carregada com sucesso!")
+        except FileNotFoundError:
+            messagebox.showwarning("Aviso", "Nenhuma configuração encontrada")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao carregar configuração: {str(e)}")
+
+    def adicionar_coluna(self, coluna_existente=None):
+        # Frame para a coluna
+        col_frame = ttk.Frame(self.colunas_frame)
+        col_frame.pack(fill=tk.X, pady=2)
         
+        # Nome da coluna
+        ttk.Label(col_frame, text="Nome:").pack(side=tk.LEFT, padx=2)
+        nome_entry = ttk.Entry(col_frame, width=20)
+        nome_entry.pack(side=tk.LEFT, padx=2)
+        
+        # Tipo da coluna
+        ttk.Label(col_frame, text="Tipo:").pack(side=tk.LEFT, padx=2)
+        tipo_combo = ttk.Combobox(col_frame, values=[
+            'Texto', 'Número Inteiro', 'Número Decimal', 'Data e Hora',
+            'Verdadeiro/Falso', 'Email', 'Nome', 'Telefone', 'Endereço',
+            'CPF', 'CNPJ', 'RG'
+        ], state='readonly')
+        tipo_combo.pack(side=tk.LEFT, padx=2)
+        
+        # Configurações adicionais
+        config_frame = ttk.Frame(col_frame)
+        config_frame.pack(side=tk.LEFT, padx=2)
+        
+        # Botão de configurações
+        config_btn = ttk.Button(config_frame, text="Configurações", 
+                              command=lambda: self.abrir_configuracoes_coluna(col_frame))
+        config_btn.pack(side=tk.LEFT)
+        
+        # Botão de remover
+        remove_btn = ttk.Button(col_frame, text="Remover", 
+                              command=lambda: self.remover_coluna(col_frame))
+        remove_btn.pack(side=tk.RIGHT)
+        
+        # Se houver uma coluna existente, preenche os valores
+        if coluna_existente:
+            nome_entry.insert(0, coluna_existente['nome'])
+            tipo_combo.set(coluna_existente['tipo'])
+        else:
+            # Adiciona a coluna à lista de colunas
+            self.colunas.append({
+                'nome': nome_entry.get(),
+                'tipo': tipo_combo.get(),
+                'config': {}
+            })
+        
+        # Armazena os widgets para referência
+        col_frame.nome_entry = nome_entry
+        col_frame.tipo_combo = tipo_combo
+        col_frame.config_frame = config_frame
+        
+        # Atualiza a lista de colunas quando o nome ou tipo mudar
+        def atualizar_coluna(*args):
+            for col in self.colunas:
+                if col['nome'] == nome_entry.get():
+                    col['nome'] = nome_entry.get()
+                    col['tipo'] = tipo_combo.get()
+                    break
+        
+        nome_entry.bind('<KeyRelease>', atualizar_coluna)
+        tipo_combo.bind('<<ComboboxSelected>>', atualizar_coluna)
+        
+        self.colunas_frame.update_idletasks()
+        self.colunas_frame.configure(height=len(self.colunas_frame.winfo_children()) * 40)
+
+    def abrir_configuracoes_coluna(self, col_frame):
+        tipo = col_frame.tipo_combo.get()
+        if not tipo:
+            messagebox.showwarning("Aviso", "Selecione um tipo de coluna primeiro")
+            return
+            
+        config_window = tk.Toplevel(self.root)
+        config_window.title("Configurações da Coluna")
+        config_window.geometry("300x200")
+        
+        # Frame para configurações
+        config_frame = ttk.Frame(config_window, padding="10")
+        config_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Configurações específicas por tipo
+        if tipo in ['Texto', 'Email', 'Nome', 'Telefone', 'Endereço']:
+            ttk.Label(config_frame, text="Tamanho máximo:").pack(anchor=tk.W)
+            tamanho_entry = ttk.Entry(config_frame)
+            tamanho_entry.pack(fill=tk.X, pady=5)
+            tamanho_entry.insert(0, "50")
+            
+        elif tipo in ['Número Inteiro', 'Número Decimal']:
+            ttk.Label(config_frame, text="Valor mínimo:").pack(anchor=tk.W)
+            min_entry = ttk.Entry(config_frame)
+            min_entry.pack(fill=tk.X, pady=5)
+            min_entry.insert(0, "0")
+            
+            ttk.Label(config_frame, text="Valor máximo:").pack(anchor=tk.W)
+            max_entry = ttk.Entry(config_frame)
+            max_entry.pack(fill=tk.X, pady=5)
+            max_entry.insert(0, "1000")
+            
+        elif tipo == 'Data e Hora':
+            ttk.Label(config_frame, text="Formato:").pack(anchor=tk.W)
+            formato_combo = ttk.Combobox(config_frame, 
+                                       values=['%d/%m/%Y', '%Y-%m-%d', '%d/%m/%Y %H:%M:%S'],
+                                       state='readonly')
+            formato_combo.pack(fill=tk.X, pady=5)
+            formato_combo.set('%d/%m/%Y')
+            
+        # Botão de salvar
+        def salvar_config():
+            config = {}
+            if tipo in ['Texto', 'Email', 'Nome', 'Telefone', 'Endereço']:
+                config['tamanho_maximo'] = int(tamanho_entry.get())
+            elif tipo in ['Número Inteiro', 'Número Decimal']:
+                config['minimo'] = float(min_entry.get())
+                config['maximo'] = float(max_entry.get())
+            elif tipo == 'Data e Hora':
+                config['formato'] = formato_combo.get()
+                
+            col_frame.config = config
+            config_window.destroy()
+            
+        ttk.Button(config_frame, text="Salvar", command=salvar_config).pack(pady=10)
+
+    def remover_coluna(self, col_frame):
+        # Remove a coluna da lista
+        nome = col_frame.nome_entry.get()
+        for col in self.colunas[:]:
+            if col['nome'] == nome:
+                self.colunas.remove(col)
+                break
+        
+        col_frame.destroy()
+        self.colunas_frame.update_idletasks()
+        self.colunas_frame.configure(height=len(self.colunas_frame.winfo_children()) * 40)
+
     def gerar_banco_dados(self):
         if not self.colunas:
             messagebox.showerror("Erro", "Adicione pelo menos uma coluna")
             return
             
-        try:
-            num_linhas = int(self.num_linhas.get())
-        except ValueError:
-            messagebox.showerror("Erro", "Por favor, insira um número válido de linhas")
+        num_linhas = self.validar_numero_linhas()
+        if num_linhas is None:
             return
             
-        # Gera nome aleatório para o banco de dados
-        nome_banco = f"banco_{random.randint(1000, 9999)}"
-        
-        # Cria diretório de bancos de dados se não existir
-        if not os.path.exists("bancos_dados"):
-            os.makedirs("bancos_dados")
+        try:
+            # Gera nome aleatório para o banco de dados
+            nome_banco = f"banco_{random.randint(1000, 9999)}"
             
-        # Cria banco de dados SQLite
-        engine = create_engine(f'sqlite:///bancos_dados/{nome_banco}.db')
-        
-        # Cria classe de tabela dinâmica
-        atributos_tabela = {
-            '__tablename__': 'dados',
-            'id': Column(Integer, primary_key=True, autoincrement=True)
-        }
-        
-        # Adiciona as colunas dinamicamente
-        for col in self.colunas:
-            if col['tipo'] in ['Texto', 'Email', 'Nome', 'Telefone', 'Endereço']:
-                atributos_tabela[col['nome']] = Column(String)
-            elif col['tipo'] == 'Número Inteiro':
-                atributos_tabela[col['nome']] = Column(Integer)
-            elif col['tipo'] == 'Número Decimal':
-                atributos_tabela[col['nome']] = Column(Float)
-            elif col['tipo'] == 'Data e Hora':
-                atributos_tabela[col['nome']] = Column(DateTime)
-            elif col['tipo'] == 'Verdadeiro/Falso':
-                atributos_tabela[col['nome']] = Column(Boolean)
+            # Cria diretório de bancos de dados se não existir
+            if not os.path.exists("bancos_dados"):
+                os.makedirs("bancos_dados")
                 
-        TabelaDinamica = type('TabelaDinamica', (Base,), atributos_tabela)
-        
-        # Cria a tabela
-        Base.metadata.create_all(engine)
-        
-        # Cria sessão
-        Session = sessionmaker(bind=engine)
-        session = Session()
-        
-        # Gera dados
-        for _ in range(num_linhas):
-            dados_linha = {}
+            # Cria banco de dados SQLite
+            engine = create_engine(f'sqlite:///bancos_dados/{nome_banco}.db')
+            
+            # Cria classe de tabela dinâmica
+            atributos_tabela = {
+                '__tablename__': 'dados',
+                'id': Column(Integer, primary_key=True, autoincrement=True)
+            }
+            
+            # Adiciona as colunas dinamicamente
             for col in self.colunas:
-                if col['tipo'] == 'Texto':
-                    dados_linha[col['nome']] = fake.text(max_nb_chars=50)
+                if col['tipo'] in ['Texto', 'Email', 'Nome', 'Telefone', 'Endereço']:
+                    atributos_tabela[col['nome']] = Column(String)
                 elif col['tipo'] == 'Número Inteiro':
-                    dados_linha[col['nome']] = fake.random_int(min=-1000, max=1000)
+                    atributos_tabela[col['nome']] = Column(Integer)
                 elif col['tipo'] == 'Número Decimal':
-                    dados_linha[col['nome']] = fake.random_number(digits=5, fix_len=True)
+                    atributos_tabela[col['nome']] = Column(Float)
                 elif col['tipo'] == 'Data e Hora':
-                    dados_linha[col['nome']] = fake.date_time()
+                    atributos_tabela[col['nome']] = Column(DateTime)
                 elif col['tipo'] == 'Verdadeiro/Falso':
-                    dados_linha[col['nome']] = fake.boolean()
-                elif col['tipo'] == 'Email':
-                    dados_linha[col['nome']] = fake.email()
-                elif col['tipo'] == 'Nome':
-                    dados_linha[col['nome']] = fake.name()
-                elif col['tipo'] == 'Telefone':
-                    dados_linha[col['nome']] = fake.phone_number()
-                elif col['tipo'] == 'Endereço':
-                    dados_linha[col['nome']] = fake.address()
+                    atributos_tabela[col['nome']] = Column(Boolean)
                     
-            session.add(TabelaDinamica(**dados_linha))
+            TabelaDinamica = type('TabelaDinamica', (Base,), atributos_tabela)
             
-        session.commit()
-        session.close()
-        
-        # Salva credenciais
-        credenciais = {
-            "nome_banco": nome_banco,
-            "caminho_banco": f"bancos_dados/{nome_banco}.db",
-            "criado_em": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        }
-        
-        with open(f"bancos_dados/{nome_banco}_credenciais.json", "w", encoding='utf-8') as f:
-            json.dump(credenciais, f, indent=4, ensure_ascii=False)
+            # Cria a tabela
+            Base.metadata.create_all(engine)
             
-        # Armazena informações do último banco gerado
-        self.ultimo_banco = {
-            "nome": nome_banco,
-            "caminho": f"bancos_dados/{nome_banco}.db",
-            "credenciais": f"bancos_dados/{nome_banco}_credenciais.json"
-        }
-        
-        # Habilita o botão de download
-        self.botao_download.config(state='normal')
+            # Cria sessão
+            Session = sessionmaker(bind=engine)
+            session = Session()
             
-        messagebox.showinfo("Sucesso", f"Banco de dados gerado com sucesso!\nNome: {nome_banco}\nLocalização: bancos_dados/{nome_banco}.db")
-        
-    def baixar_banco_dados(self):
-        if not self.ultimo_banco:
-            messagebox.showerror("Erro", "Nenhum banco de dados foi gerado ainda")
-            return
+            # Atualiza a barra de progresso
+            self.progress_var.set(0)
+            self.status_var.set("Gerando dados...")
+            self.root.update()
             
-        try:
-            # Obtém o caminho da pasta de downloads
-            downloads_path = str(Path.home() / "Downloads")
+            # Gera dados
+            for i in range(num_linhas):
+                dados_linha = {}
+                for col in self.colunas:
+                    if col['tipo'] == 'Texto':
+                        tamanho = col.get('config', {}).get('tamanho_maximo', 50)
+                        dados_linha[col['nome']] = fake.text(max_nb_chars=tamanho)
+                    elif col['tipo'] == 'Número Inteiro':
+                        min_val = col.get('config', {}).get('minimo', 0)
+                        max_val = col.get('config', {}).get('maximo', 1000)
+                        dados_linha[col['nome']] = fake.random_int(min=int(min_val), max=int(max_val))
+                    elif col['tipo'] == 'Número Decimal':
+                        min_val = col.get('config', {}).get('minimo', 0)
+                        max_val = col.get('config', {}).get('maximo', 1000)
+                        dados_linha[col['nome']] = fake.random_number(digits=5, fix_len=True)
+                    elif col['tipo'] == 'Data e Hora':
+                        formato = col.get('config', {}).get('formato', '%d/%m/%Y')
+                        dados_linha[col['nome']] = fake.date_time()
+                    elif col['tipo'] == 'Verdadeiro/Falso':
+                        dados_linha[col['nome']] = fake.boolean()
+                    elif col['tipo'] == 'Email':
+                        dados_linha[col['nome']] = fake.email()
+                    elif col['tipo'] == 'Nome':
+                        dados_linha[col['nome']] = fake.name()
+                    elif col['tipo'] == 'Telefone':
+                        dados_linha[col['nome']] = fake.phone_number()
+                    elif col['tipo'] == 'Endereço':
+                        dados_linha[col['nome']] = fake.address()
+                    elif col['tipo'] == 'CPF':
+                        dados_linha[col['nome']] = fake.cpf()
+                    elif col['tipo'] == 'CNPJ':
+                        dados_linha[col['nome']] = fake.cnpj()
+                    elif col['tipo'] == 'RG':
+                        dados_linha[col['nome']] = fake.rg()
+                        
+                session.add(TabelaDinamica(**dados_linha))
+                
+                # Atualiza a barra de progresso
+                progress = (i + 1) / num_linhas * 100
+                self.progress_var.set(progress)
+                self.status_var.set(f"Gerando dados... {int(progress)}%")
+                self.root.update()
+                
+            session.commit()
+            session.close()
             
-            # Cria uma pasta para o banco de dados
-            pasta_banco = os.path.join(downloads_path, f"banco_dados_{self.ultimo_banco['nome']}")
-            os.makedirs(pasta_banco, exist_ok=True)
+            # Salva as credenciais
+            credenciais = {
+                "nome_banco": nome_banco,
+                "usuario": self.usuario.get(),
+                "senha": self.senha.get(),
+                "caminho_banco": f"bancos_dados/{nome_banco}.db",
+                "criado_em": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
             
-            # Copia o arquivo do banco de dados
-            shutil.copy2(self.ultimo_banco['caminho'], os.path.join(pasta_banco, f"{self.ultimo_banco['nome']}.db"))
+            with open(f"bancos_dados/{nome_banco}_credenciais.json", "w", encoding='utf-8') as f:
+                json.dump(credenciais, f, indent=4, ensure_ascii=False)
             
-            # Copia o arquivo de credenciais
-            shutil.copy2(self.ultimo_banco['credenciais'], os.path.join(pasta_banco, f"{self.ultimo_banco['nome']}_credenciais.json"))
-            
-            messagebox.showinfo("Sucesso", f"Banco de dados baixado com sucesso!\nLocalização: {pasta_banco}")
+            # Atualiza status final
+            self.status_var.set(f"Banco de dados gerado com sucesso: {nome_banco}.db")
+            messagebox.showinfo("Sucesso", f"Banco de dados gerado com sucesso!\nArquivo: {nome_banco}.db\nCredenciais: {nome_banco}_credenciais.json")
             
         except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao baixar o banco de dados: {str(e)}")
+            self.status_var.set("Erro ao gerar banco de dados")
+            messagebox.showerror("Erro", f"Erro ao gerar banco de dados: {str(e)}")
+
+    def abrir_pasta_bancos(self):
+        """Abre a pasta onde os bancos de dados são salvos"""
+        import os
+        import subprocess
         
-    def executar(self):
-        self.root.mainloop()
+        pasta_bancos = os.path.join(os.path.dirname(os.path.abspath(__file__)), "bancos_dados")
+        if not os.path.exists(pasta_bancos):
+            os.makedirs(pasta_bancos)
+            
+        if os.name == 'nt':  # Windows
+            os.startfile(pasta_bancos)
+        elif os.name == 'posix':  # Linux/Mac
+            subprocess.run(['xdg-open', pasta_bancos])
+
+    def toggle_mostrar_senha(self):
+        """Alterna entre mostrar e ocultar a senha"""
+        if self.mostrar_senha.get():
+            self.senha.config(show="")
+        else:
+            self.senha.config(show="*")
 
 if __name__ == "__main__":
-    app = GeradorBancoDados()
-    app.executar() 
+    root = tk.Tk()
+    app = DatabaseGenerator(root)
+    root.mainloop() 
