@@ -1,35 +1,52 @@
 # Gerador de Banco de Dados
 
-Uma aplicação gráfica para gerar bancos de dados SQLite com dados aleatórios em português.
+Um gerador de banco de dados com interface gráfica que permite criar bancos de dados SQLite com dados aleatórios para testes.
+
+## Download
+
+Você pode baixar o instalador do programa na seção [Releases](https://github.com/seu-usuario/gerador-banco-dados/releases) deste repositório.
+
+### Requisitos do Sistema
+- Windows 10 ou superior
+- Não requer Python instalado
 
 ## Funcionalidades
 
 - Interface gráfica intuitiva
-- Geração de dados aleatórios em português
-- Suporte a diversos tipos de dados:
-  - Texto (com tamanho configurável)
-  - Números inteiros e decimais (com faixa de valores configurável)
-  - Data e hora (com formato configurável)
-  - Verdadeiro/Falso
-  - Email
-  - Nome
-  - Telefone
-  - Endereço
+- Geração de dados aleatórios realistas
+- Suporte a múltiplos tipos de dados:
+  - Texto
+  - Números inteiros e decimais
+  - Datas e horas
+  - Valores booleanos
+  - Emails
+  - Nomes
+  - Telefones
+  - Endereços
   - CPF
   - CNPJ
   - RG
-- Configurações personalizáveis por coluna
-- Barra de progresso durante a geração
+- Configurações personalizáveis para cada coluna
 - Salvamento e carregamento de configurações
-- Validação de entrada de dados
-- Geração de banco SQLite
-
-## Requisitos
-
-- Python 3.8 ou superior
-- Dependências listadas em `requirements.txt`
+- Geração de arquivo de credenciais
+- Interface em português
 
 ## Instalação
+
+1. Baixe o arquivo `Gerador_Banco_Dados_Setup.exe` da seção [Releases](https://github.com/seu-usuario/gerador-banco-dados/releases)
+2. Execute o instalador
+3. Siga as instruções na tela
+4. O programa será instalado em "Arquivos de Programas" e criará atalhos no menu Iniciar
+
+## Desenvolvimento
+
+Se você quiser desenvolver ou modificar o programa, siga estas instruções:
+
+### Requisitos de Desenvolvimento
+- Python 3.8 ou superior
+- pip (gerenciador de pacotes Python)
+
+### Instalação do Ambiente de Desenvolvimento
 
 1. Clone o repositório:
 ```bash
@@ -42,43 +59,28 @@ cd gerador-banco-dados
 pip install -r requirements.txt
 ```
 
-## Uso
-
-1. Execute o programa:
+3. Execute o programa:
 ```bash
 python database_generator.py
 ```
 
-2. Na interface:
-   - Adicione colunas clicando em "Adicionar Coluna"
-   - Configure cada coluna com nome e tipo
-   - Ajuste as configurações específicas de cada coluna (opcional)
-   - Defina o número de linhas desejado
-   - Clique em "Baixar Banco de Dados" para gerar
+### Criando um Executável
 
-3. O banco de dados será gerado na pasta `bancos_dados`
+Para criar um executável do programa:
 
-## Configurações de Colunas
+1. Instale o Inno Setup 6 (https://jrsoftware.org/isdl.php)
+2. Execute o script de criação do instalador:
+```bash
+python criar_instalador.py
+```
 
-### Texto
-- Tamanho máximo do texto
-
-### Números
-- Valor mínimo
-- Valor máximo
-
-### Data e Hora
-- Formato da data (ex: %d/%m/%Y, %Y-%m-%d)
-
-## Contribuição
-
-Contribuições são bem-vindas! Por favor, sinta-se à vontade para submeter pull requests.
+O instalador será criado na pasta `installer`.
 
 ## Licença
 
-Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para detalhes.
+Este projeto está licenciado sob a Licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ## Saída
 
 O aplicativo irá:
-1. Criar um banco de dados SQLite na pasta `
+1. Criar um banco de dados SQLite na pasta `bancos_dados`
