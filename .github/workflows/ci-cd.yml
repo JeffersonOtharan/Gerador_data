@@ -1,0 +1,78 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [published]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Run tests
+      run: python -m unittest tests/test_database_generator.py -v
+
+  build:
+    needs: test
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Create executable
+      run: python criar_executavel.py
+    
+    - name: Create installer
+      run: |
+        # Download Inno Setup
+        $url = "https://jrsoftware.org/download.php/innosetup-6.2.2.exe"
+        $output = "innosetup-6.2.2.exe"
+        Invoke-WebRequest -Uri $url -OutFile $output
+        
+        # Install Inno Setup silently
+        Start-Process -FilePath $output -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" -Wait
+        
+        # Create installer
+        python criar_instalador.py
+    
+    - name: Upload installer
+      uses: actions/upload-artifact@v3
+      with:
+        name: Gerador_Banco_Dados_Setup
+        path: installer/Gerador_Banco_Dados_Setup.exe
+    
+    - name: Create Release
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: installer/Gerador_Banco_Dados_Setup.exe
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
